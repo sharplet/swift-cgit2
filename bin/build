@@ -1,0 +1,98 @@
+#!/bin/bash
+
+set -e
+
+cmake_prefix_root="$PWD/iSSH2"
+
+mkdir -p .build/libgit2
+cd .build/libgit2
+
+build_and_install() {
+  if command -v xcpretty >/dev/null 2>&1; then
+    cmake --build . --target install | xcpretty
+  else
+    cmake --build . --target install
+  fi
+}
+
+cmake_configure() {
+  cmake -G Xcode ../../libgit2 \
+    -DCMAKE_C_FLAGS=-fembed-bitcode \
+    -DCMAKE_INSTALL_PREFIX="Products/\$ENV{PROJECT_NAME}\$ENV{EFFECTIVE_PLATFORM_NAME}" \
+    -DCMAKE_XCODE_ATTRIBUTE_BITCODE_ENABLED=YES \
+    "$@"
+}
+
+cmake_prefix() {
+  local platform=$1
+  echo "$cmake_prefix_root/libssh2_$platform;$cmake_prefix_root/openssl_$platform"
+}
+
+create_xcframework() {
+  local output=$1; shift
+  declare -a opts
+
+  for prefix; do
+    opts+=(-library "$prefix"/lib/libgit2.a -headers "$prefix"/include)
+  done
+
+  rm -rf "$output"
+  xcodebuild -create-xcframework -output "$output" "${opts[@]}"
+}
+
+xcode_arch_sysroots() {
+  local platform=$1; shift
+  local archs=("$@")
+
+  local sysroot
+  sysroot="$(xcrun --sdk "$platform" --show-sdk-path)"
+
+  local arch_sysroots=("${archs[@]/*/$sysroot}")
+  local IFS=";"
+  echo "${arch_sysroots[*]}"
+}
+
+# macosx
+
+cmake_configure \
+  -DCMAKE_PREFIX_PATH="$(cmake_prefix macosx)" \
+  -DBUILD_SHARED_LIBS:BOOL=OFF \
+  -DBUILD_CLAR:BOOL=OFF \
+  -DCMAKE_OSX_ARCHITECTURES="arm64;x86_64" \
+  -DCMAKE_APPLE_ARCH_SYSROOTS="$(xcode_arch_sysroots macosx arm64 x86_64)" \
+  -DCMAKE_OSX_DEPLOYMENT_TARGET=10.13.0 \
+  -DCMAKE_OSX_SYSROOT=macosx
+
+build_and_install
+
+# iphoneos
+
+cmake_configure \
+  -DCMAKE_PREFIX_PATH="$(cmake_prefix iphoneos)" \
+  -DBUILD_SHARED_LIBS:BOOL=OFF \
+  -DBUILD_CLAR:BOOL=OFF \
+  -DREGEX_BACKEND=builtin \
+  -DCMAKE_OSX_ARCHITECTURES=arm64 \
+  -DCMAKE_APPLE_ARCH_SYSROOTS="$(xcode_arch_sysroots iphoneos arm64)" \
+  -DCMAKE_OSX_DEPLOYMENT_TARGET=11.0 \
+  -DCMAKE_OSX_SYSROOT=iphoneos
+
+build_and_install
+
+# iphonesimulator
+
+cmake_configure \
+  -DCMAKE_PREFIX_PATH:PATH="$(cmake_prefix iphonesimulator)" \
+  -DBUILD_SHARED_LIBS:BOOL=OFF \
+  -DBUILD_CLAR:BOOL=OFF \
+  -DREGEX_BACKEND=builtin \
+  -DCMAKE_OSX_ARCHITECTURES="arm64;x86_64" \
+  -DCMAKE_APPLE_ARCH_SYSROOTS="$(xcode_arch_sysroots iphonesimulator arm64 x86_64)" \
+  -DCMAKE_OSX_DEPLOYMENT_TARGET=11.0 \
+  -DCMAKE_OSX_SYSROOT=iphonesimulator
+
+build_and_install
+
+# build xcframework
+
+create_xcframework libgit2.xcframework Products/*
