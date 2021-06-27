@@ -1,0 +1,54 @@
+#!/bin/bash
+
+set -e
+
+print_usage() {
+  echo >&2 "Usage: bin/upload <tag> <xcframework ...>"
+}
+
+truncate() {
+  : >"$1"
+}
+
+zip_progress() {
+  zip --quiet --display-globaldots --dot-size 2m "$@"
+}
+
+for opt; do
+  case $opt in
+    -h)
+      print_usage
+      exit
+      ;;
+    *)
+      ;;
+  esac
+done
+
+if (( $# < 2 )); then
+  print_usage
+  exit 1
+fi
+
+declare -a archives
+manifest=upload-manifest.txt
+tag=$1; shift
+
+truncate "$manifest"
+
+for xcframework; do
+  archive="$xcframework.zip"
+  file=$(basename "$xcframework")
+
+  pushd "$(dirname "$xcframework")" &>/dev/null
+  echo -n "Archiving $xcframework: "
+  zip_progress -r "$file.zip" "$file"
+  popd &>/dev/null
+
+  printf "%s\t%s\n" "$archive" "$(swift package compute-checksum "$archive")" >> "$manifest"
+  archives+=("$archive")
+done
+
+echo "Upload manifest written to '$manifest'."
+
+gh release upload "$tag" "${archives[@]}"
