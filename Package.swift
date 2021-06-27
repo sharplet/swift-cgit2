@@ -3,7 +3,7 @@
 import PackageDescription
 
 let package = Package(
-  name: "swift-git",
+  name: "swift-cgit2",
   targets: [
     .target(
       name: "Cgit2",
