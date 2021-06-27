@@ -3,7 +3,7 @@
 set -e
 
 print_usage() {
-  echo >&2 "Usage: bin/upload <tag> <xcframework ...>"
+  echo >&2 "Usage: bin/archive <file.xcframework ...>"
 }
 
 truncate() {
@@ -32,7 +32,6 @@ fi
 
 declare -a archives
 manifest=upload-manifest.txt
-tag=$1; shift
 
 truncate "$manifest"
 
@@ -50,5 +49,3 @@ for xcframework; do
 done
 
 echo "Upload manifest written to '$manifest'."
-
-gh release upload "$tag" "${archives[@]}"
