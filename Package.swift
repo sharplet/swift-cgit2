@@ -7,12 +7,14 @@ let package = Package(
   targets: [
     .target(
       name: "Cgit2",
-      dependencies: ["libgit2"],
+      dependencies: ["OpenSSL", "libgit2", "libssh2"],
       linkerSettings: [.linkedLibrary("iconv"), .linkedLibrary("z")]
     ),
     .testTarget(name: "Cgit2Tests", dependencies: ["Cgit2"]),
 
-    .binaryTarget(name: "libgit2", path: ".build/libgit2/libgit2.xcframework"),
+    .binaryTarget(name: "OpenSSL", path: ".build/OpenSSL.xcframework"),
+    .binaryTarget(name: "libgit2", path: ".build/libgit2.xcframework"),
+    .binaryTarget(name: "libssh2", path: ".build/libssh2.xcframework"),
     // .binaryTarget(
     //   name: "libgit2",
     //   url: "https://github.com/sharplet/swift-git/releases/v1.1.0/download/libgit2.xcframework.zip",

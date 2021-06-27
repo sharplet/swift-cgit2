@@ -2,6 +2,16 @@ import Cgit2
 import XCTest
 
 final class Cgit2Tests: XCTestCase {
+  override class func setUp() {
+    super.setUp()
+    git_libgit2_init()
+  }
+
+  override class func tearDown() {
+    super.tearDown()
+    git_libgit2_shutdown()
+  }
+
   func testRepoInit() {
     var repo: OpaquePointer?
 

@@ -2,10 +2,8 @@
 
 set -e
 
-cmake_prefix_root="$PWD/iSSH2"
-
-mkdir -p .build/libgit2
-cd .build/libgit2
+issh2_dir="$PWD/iSSH2"
+libgit2_dir="$PWD/libgit2"
 
 build_and_install() {
   if command -v xcpretty >/dev/null 2>&1; then
@@ -16,7 +14,7 @@ build_and_install() {
 }
 
 cmake_configure() {
-  cmake -G Xcode ../../libgit2 \
+  cmake -G Xcode "$libgit2_dir" \
     -DCMAKE_C_FLAGS=-fembed-bitcode \
     -DCMAKE_INSTALL_PREFIX="Products/\$ENV{PROJECT_NAME}\$ENV{EFFECTIVE_PLATFORM_NAME}" \
     -DCMAKE_XCODE_ATTRIBUTE_BITCODE_ENABLED=YES \
@@ -25,7 +23,7 @@ cmake_configure() {
 
 cmake_prefix() {
   local platform=$1
-  echo "$cmake_prefix_root/libssh2_$platform;$cmake_prefix_root/openssl_$platform"
+  echo "$issh2_dir/libssh2_$platform;$issh2_dir/openssl_$platform"
 }
 
 create_xcframework() {
@@ -40,6 +38,10 @@ create_xcframework() {
   xcodebuild -create-xcframework -output "$output" "${opts[@]}"
 }
 
+issh2() {
+  "$issh2_dir"/iSSH2.sh "$@"
+}
+
 xcode_arch_sysroots() {
   local platform=$1; shift
   local archs=("$@")
@@ -52,47 +54,134 @@ xcode_arch_sysroots() {
   echo "${arch_sysroots[*]}"
 }
 
-# macosx
+# ============================================================================ #
 
-cmake_configure \
-  -DCMAKE_PREFIX_PATH="$(cmake_prefix macosx)" \
-  -DBUILD_SHARED_LIBS:BOOL=OFF \
-  -DBUILD_CLAR:BOOL=OFF \
-  -DCMAKE_OSX_ARCHITECTURES="arm64;x86_64" \
-  -DCMAKE_APPLE_ARCH_SYSROOTS="$(xcode_arch_sysroots macosx arm64 x86_64)" \
-  -DCMAKE_OSX_DEPLOYMENT_TARGET=10.13.0 \
-  -DCMAKE_OSX_SYSROOT=macosx
+build_openssl() {
+  mkdir -p .build/OpenSSL
+  pushd .build/OpenSSL
 
-build_and_install
+  issh2 --no-clean --platform=macosx --archs="arm64 x86_64" --min-version=10.11.0
+  mkdir -p macosx/lib
+  libtool -static -o macosx/lib/libOpenSSL.a "$issh2_dir"/openssl_macosx/lib/*.a
 
-# iphoneos
+  issh2 --no-clean --platform=iphoneos --archs=arm64 --min-version=9.0.0
+  mkdir -p iphoneos/lib
+  libtool -static -o iphoneos/lib/libOpenSSL.a "$issh2_dir"/openssl_iphoneos/lib/*.a
 
-cmake_configure \
-  -DCMAKE_PREFIX_PATH="$(cmake_prefix iphoneos)" \
-  -DBUILD_SHARED_LIBS:BOOL=OFF \
-  -DBUILD_CLAR:BOOL=OFF \
-  -DREGEX_BACKEND=builtin \
-  -DCMAKE_OSX_ARCHITECTURES=arm64 \
-  -DCMAKE_APPLE_ARCH_SYSROOTS="$(xcode_arch_sysroots iphoneos arm64)" \
-  -DCMAKE_OSX_DEPLOYMENT_TARGET=11.0 \
-  -DCMAKE_OSX_SYSROOT=iphoneos
+  issh2 --platform=iphonesimulator --archs="arm64 x86_64" --min-version=9.0.0
+  mkdir -p iphonesimulator/lib
+  libtool -static -o iphonesimulator/lib/libOpenSSL.a "$issh2_dir"/openssl_iphonesimulator/lib/*.a
 
-build_and_install
+  rm -rf ../OpenSSL.xcframework
+  xcodebuild -create-xcframework \
+    -output ../OpenSSL.xcframework \
+    -library macosx/lib/*.a \
+    -headers "$issh2_dir"/openssl_macosx/include \
+    -library iphoneos/lib/*.a \
+    -headers "$issh2_dir"/openssl_iphoneos/include \
+    -library iphonesimulator/lib/*.a \
+    -headers "$issh2_dir"/openssl_iphonesimulator/include
 
-# iphonesimulator
+  popd
 
-cmake_configure \
-  -DCMAKE_PREFIX_PATH:PATH="$(cmake_prefix iphonesimulator)" \
-  -DBUILD_SHARED_LIBS:BOOL=OFF \
-  -DBUILD_CLAR:BOOL=OFF \
-  -DREGEX_BACKEND=builtin \
-  -DCMAKE_OSX_ARCHITECTURES="arm64;x86_64" \
-  -DCMAKE_APPLE_ARCH_SYSROOTS="$(xcode_arch_sysroots iphonesimulator arm64 x86_64)" \
-  -DCMAKE_OSX_DEPLOYMENT_TARGET=11.0 \
-  -DCMAKE_OSX_SYSROOT=iphonesimulator
+  rm -rf .build/libssh2.xcframework
+  xcodebuild -create-xcframework \
+    -output .build/libssh2.xcframework \
+    -library "$issh2_dir"/libssh2_macosx/lib/libssh2.a \
+    -headers "$issh2_dir"/libssh2_macosx/include \
+    -library "$issh2_dir"/libssh2_iphoneos/lib/libssh2.a \
+    -headers "$issh2_dir"/libssh2_iphoneos/include \
+    -library "$issh2_dir"/libssh2_iphonesimulator/lib/libssh2.a \
+    -headers "$issh2_dir"/libssh2_iphonesimulator/include
+}
 
-build_and_install
+# ============================================================================ #
 
-# build xcframework
+build_libssh2() {
+  mkdir -p .build/libssh2
+  pushd .build/libssh2
 
-create_xcframework libgit2.xcframework Products/*
+  issh2 --platform=macosx --archs="arm64 x86_64" --min-version=10.11.0
+  mkdir -p macosx/lib
+  libtool -static -o macosx/lib/libOpenSSL.a "$issh2_dir"/openssl_macosx/lib/*.a
+
+  issh2 --platform=iphoneos --archs=arm64 --min-version=9.0.0
+  mkdir -p iphoneos/lib
+  libtool -static -o iphoneos/lib/libOpenSSL.a "$issh2_dir"/openssl_iphoneos/lib/*.a
+
+  issh2 --platform=iphonesimulator --archs="arm64 x86_64" --min-version=9.0.0
+  mkdir -p iphonesimulator/lib
+  libtool -static -o iphonesimulator/lib/libOpenSSL.a "$issh2_dir"/openssl_iphonesimulator/lib/*.a
+
+  rm -rf ../OpenSSL.xcframework
+  xcodebuild -create-xcframework \
+    -output ../OpenSSL.xcframework \
+    -library macosx/lib/*.a \
+    -headers "$issh2_dir"/openssl_macosx/include \
+    -library iphoneos/lib/*.a \
+    -headers "$issh2_dir"/openssl_iphoneos/include \
+    -library iphonesimulator/lib/*.a \
+    -headers "$issh2_dir"/openssl_iphonesimulator/include
+
+  popd
+}
+
+# ============================================================================ #
+
+build_libgit2() {
+  mkdir -p .build/libgit2
+  pushd .build/libgit2
+
+  # macosx
+
+  cmake_configure \
+    -DCMAKE_PREFIX_PATH="$(cmake_prefix macosx)" \
+    -DBUILD_SHARED_LIBS:BOOL=OFF \
+    -DBUILD_CLAR:BOOL=OFF \
+    -DCMAKE_OSX_ARCHITECTURES="arm64;x86_64" \
+    -DCMAKE_APPLE_ARCH_SYSROOTS="$(xcode_arch_sysroots macosx arm64 x86_64)" \
+    -DCMAKE_OSX_DEPLOYMENT_TARGET=10.13.0 \
+    -DCMAKE_OSX_SYSROOT=macosx
+
+  build_and_install
+
+  # iphoneos
+
+  cmake_configure \
+    -DCMAKE_PREFIX_PATH="$(cmake_prefix iphoneos)" \
+    -DBUILD_SHARED_LIBS:BOOL=OFF \
+    -DBUILD_CLAR:BOOL=OFF \
+    -DREGEX_BACKEND=builtin \
+    -DCMAKE_OSX_ARCHITECTURES=arm64 \
+    -DCMAKE_APPLE_ARCH_SYSROOTS="$(xcode_arch_sysroots iphoneos arm64)" \
+    -DCMAKE_OSX_DEPLOYMENT_TARGET=11.0 \
+    -DCMAKE_OSX_SYSROOT=iphoneos
+
+  build_and_install
+
+  # iphonesimulator
+
+  cmake_configure \
+    -DCMAKE_PREFIX_PATH:PATH="$(cmake_prefix iphonesimulator)" \
+    -DBUILD_SHARED_LIBS:BOOL=OFF \
+    -DBUILD_CLAR:BOOL=OFF \
+    -DREGEX_BACKEND=builtin \
+    -DCMAKE_OSX_ARCHITECTURES="arm64;x86_64" \
+    -DCMAKE_APPLE_ARCH_SYSROOTS="$(xcode_arch_sysroots iphonesimulator arm64 x86_64)" \
+    -DCMAKE_OSX_DEPLOYMENT_TARGET=11.0 \
+    -DCMAKE_OSX_SYSROOT=iphonesimulator
+
+  build_and_install
+
+  # build xcframework
+
+  create_xcframework ../libgit2.xcframework Products/*
+
+  popd
+}
+
+# ============================================================================ #
+
+mkdir -p .build
+build_openssl
+build_libgit2
