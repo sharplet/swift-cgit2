@@ -27,7 +27,7 @@ architectures for existing libgit2 versions.
 swift-cgit2 is published under the MIT License.
 See [LICENSE](/LICENSE) for details.
 
-swift-cgit2 is subject to the terms of the [ligbit2 license][]. This means that
+swift-cgit2 is subject to the terms of the [libgit2 license][]. This means that
 you may compile and link to these projects without restriction; however, uses
 of libgit2 which fall outside the linking exception are subject to the full
 terms of the GNU General Public License, Version 2.
