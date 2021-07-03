@@ -11,9 +11,6 @@ It's provided for the following platforms and architectures:
 swift-cgit2 is not intended to provide native Swift bindings to libgit2. For a
 Swift API, take a look at [SwiftGit2][].
 
-[libgit2]: https://libgit2.org
-[SwiftGit2]: https://github.com/SwiftGit2/SwiftGit2
-
 ## Versioning
 
 swift-cgit2 will follow the same versioning scheme as libgit2, starting at
@@ -27,4 +24,14 @@ architectures for existing libgit2 versions.
 
 ## License
 
-See [LICENSE](/LICENSE).
+swift-cgit2 is published under the MIT License.
+See [LICENSE](/LICENSE) for details.
+
+swift-cgit2 is subject to the terms of the [ligbit2 license][]. This means that
+you may compile and link to these projects without restriction; however, uses
+of libgit2 which fall outside the linking exception are subject to the full
+terms of the GNU General Public License, Version 2.
+
+[SwiftGit2]: https://github.com/SwiftGit2/SwiftGit2
+[libgit2]: https://libgit2.org
+[libgit2 license]: https://github.com/libgit2/libgit2/blob/main/COPYING
